@@ -49,6 +49,7 @@ export default function Board() {
     }
 
     function computeResult() {
+        setGameStarted(false);
         if (chessGame.isCheckmate()) {
             const winner = chessGame.turn() === "w" ? "black" : "white";
             return `Checkmate! ${winner} wins!`;
