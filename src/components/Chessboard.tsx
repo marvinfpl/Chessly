@@ -9,7 +9,7 @@ type PromotionMove = {
 }
 
 export default function Board() {
-    const chessGameRef = useRef(new Chess("8/P7/7K/8/8/8/8/k7 w - - 0 1"));
+    const chessGameRef = useRef(new Chess());
     const chessGame = chessGameRef.current;
 
     const [chessPosition, setChessPosition] = useState(chessGame.fen());
@@ -31,6 +31,7 @@ export default function Board() {
     }, []);
 
     function play() {
+        getRandomPosition();
         setGameStarted(true);
         setResult(null);
     }
@@ -41,12 +42,32 @@ export default function Board() {
     }
 
     function resetGame() {
-        chessGame.reset();
-        setChessPosition(chessGame.fen());
+        getRandomPosition();
         setPromotionMove(null);
         setResult(null);
         setGameStarted(true);
     }
+
+    async function getRandomPosition() {
+        try {
+            const response = await fetch("https://lichess.org/api/puzzle/next?color=white");
+            const data = await response.json();
+            const pgn = data.game?.pgn;
+
+            if (!pgn) {
+                console.error("No pgn found: ", pgn);
+                return;
+            }
+            chessGame.reset();
+            chessGame.loadPgn(pgn);
+            setChessPosition(chessGame.fen());   
+
+            } catch (err) {
+                console.error("Error fetching puzzle:", err);
+                return
+            }
+    }
+
 
     function computeResult() {
         setGameStarted(false);
