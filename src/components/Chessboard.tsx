@@ -2,6 +2,7 @@ import { Chessboard, chessColumnToColumnIndex, defaultPieces, type PieceDropHand
 import {Chess, type PieceSymbol, type Square} from 'chess.js';
 import { useEffect, useMemo, useRef, useState } from "react";
 import Interface from "./Interface";
+import {type settings } from "./types";
 
 type PromotionMove = {
     sourceSquare: Square,
@@ -18,6 +19,21 @@ export default function Board() {
     const [promotionMove, setPromotionMove] = useState<PromotionMove | null>(null);
     const [squareSize, setSquareSize] = useState(0);
     const [playerColor, setPlayerColor] = useState<"white" | "black">("white");
+
+    const defaultSettings = {
+        difficulty: "normal",
+        playerName: "",
+        showHints: false,
+    }
+    const [settings, setSettings] = useState(() => {
+        const saved = localStorage.getItem("settings");
+        return saved ? JSON.parse(saved) : defaultSettings;
+    })
+
+    function updateSettings(newSettings: settings) {
+        setSettings(newSettings);
+        localStorage.setItem("settings", JSON.stringify(newSettings));
+    }
 
     useEffect(() => {
         const measure = () => {
@@ -234,7 +250,7 @@ export default function Board() {
                 ): null}
                 <Chessboard options={chessboardOptions}/>
             </div>
-            <Interface result={result} gameStarted={gameStarted} play={play} resign={resign} resetGame={resetGame}/>
+            <Interface result={result} gameStarted={gameStarted} play={play} resign={resign} resetGame={resetGame} settings={settings} updateSettings={updateSettings}/>
             </div>
         </div>
     );
