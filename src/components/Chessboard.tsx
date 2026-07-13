@@ -17,6 +17,7 @@ export default function Board() {
     const [result, setResult] = useState<string | null>(null);
     const [promotionMove, setPromotionMove] = useState<PromotionMove | null>(null);
     const [squareSize, setSquareSize] = useState(0);
+    const [playerColor, setPlayerColor] = useState<"white" | "black">("white");
 
     useEffect(() => {
         const measure = () => {
@@ -48,9 +49,32 @@ export default function Board() {
         setGameStarted(true);
     }
 
+    function isPlayerTurn(): boolean {
+        return (
+            playerColor === 'white' && chessGame.turn() === 'w' || playerColor === 'black' && chessGame.turn() === 'b'
+        );
+    }
+
+    function isComputerTurn(): boolean {
+        return !isPlayerTurn();
+    }
+
+    function updateTurn() {
+        if (!gameStarted) return;
+
+        if (chessGame.isGameOver()) {
+            setResult(computeResult());
+            return;
+        }
+
+        if (isComputerTurn()) {
+            setTimeout(makeRandomMove, 300);
+        }
+    }
+
     async function getRandomPosition() {
         try {
-            const response = await fetch("https://lichess.org/api/puzzle/next?color=white");
+            const response = await fetch("https://lichess.org/api/puzzle/next");
             const data = await response.json();
             const pgn = data.game?.pgn;
 
@@ -60,14 +84,19 @@ export default function Board() {
             }
             chessGame.reset();
             chessGame.loadPgn(pgn);
-            setChessPosition(chessGame.fen());   
+            setChessPosition(chessGame.fen());
+            const color = chessGame.turn() === 'w' ? 'white' : 'black';
+            setPlayerColor(color);
+            setGameStarted(true);
+            updateTurn();
 
             } catch (err) {
+                chessGame.reset();
+                setChessPosition(chessGame.fen());
                 console.error("Error fetching puzzle:", err);
                 return
             }
     }
-
 
     function computeResult() {
         setGameStarted(false);
@@ -84,17 +113,23 @@ export default function Board() {
 
     function makeRandomMove() {
         if (!gameStarted) return;
+
         if (chessGame.isGameOver()) {
             setResult(computeResult());
             return;
         }
+
         const moves = chessGame.moves();
         const move = moves[Math.floor(Math.random() * moves.length)];
         chessGame.move(move);
         setChessPosition(chessGame.fen());
+        
         if (chessGame.isGameOver()) {
             setResult(computeResult());
+            return
         }
+
+        updateTurn();
     }
 
     function handlePromotion(piece: PieceSymbol) {
@@ -113,7 +148,8 @@ export default function Board() {
                 return;
             }
 
-            setTimeout(makeRandomMove, 300);
+            updateTurn();
+
         } catch (err) {
             console.error("Promotion error: ", err);
             setPromotionMove(null);
@@ -149,13 +185,18 @@ export default function Board() {
                 to: targetSquare,
                 promotion: 'q',
             });
+
             setChessPosition(chessGame.fen());
+
             if (chessGame.isGameOver()) {
                 setResult(computeResult());
                 return true;
             }
-            setTimeout(makeRandomMove, 300);
+
+            updateTurn();
+
             return true;
+
         } catch (err) {
             console.error("Move error: ", err);
             return false;
@@ -165,8 +206,9 @@ export default function Board() {
     const chessboardOptions = useMemo(() => ({
         onPieceDrop,
         position: chessPosition,
+        boardOrientation: playerColor,
         id: "",
-    }), [chessPosition, gameStarted]);
+    }), [chessPosition, playerColor]);
 
     const file = promotionMove?.targetSquare?.[0] ?? 'a';
     const promotionSquareLeft = squareSize > 0 ? squareSize * chessColumnToColumnIndex(file, 8, 'white') : 0;
